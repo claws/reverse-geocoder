@@ -1,0 +1,26 @@
+version: '3.7'
+
+services:
+
+  database:
+    image: postgis/postgis
+    volumes:
+      - ./database/90-shapes.sql:/docker-entrypoint-initdb.d/90-shapes.sql
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    user: postgres
+
+  reverse-geocoder:
+    build: ./web-service
+    ports:
+      - 8000:8000
+    depends_on:
+      - database
+    environment:
+      - DATABASE_DSN=postgresql://postgres:postgres@database/postgres
+
+volumes:
+  postgres-data: {}
