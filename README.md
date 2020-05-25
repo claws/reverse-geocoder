@@ -21,15 +21,12 @@ The root ``/`` will also redirect to the SwaggerUI docs page.
 ### Reverse Geocoder Endpoint
 
 To access the reverse geocoder send a POST to `/v1/reverse-geocoder/` with a
-payload containing the location of interest.
+payload containing the location of interest. See further down for examples
+using curl.
 
-When the user supplied point is within a county then the response contains
+When the user supplied point is within a country then the response contains
 attributes of the country that matched. When the user supplied point is not
-within a county then the response indicates that no country matched.
-
-```http
-POST /v1/reverse-geocoder/ {"location":{"longitude":146.558384,"latitude":-42.239392}}
-```
+within a country then the response indicates that no country matched.
 
 The response will always contain a copy of the query parameters so that it
 provides some context for the data. When the location is within a country
@@ -62,15 +59,16 @@ this:
 }
 ```
 
-## Run Demo
+## Demo
 
-To simplify running the reverse geocoding service a Docker compose
-configuration example is included. However, a few set up steps need to be run
-first to prepare data that will go into the database - as it is not stored in
-this repository.
+To simplify running the reverse geocoding service a Docker compose configuration
+example is included. However, a few set up steps need to be run first to
+prepare data that will go into the database - as it is not stored in this
+repository.
 
 ### Clone Repo
 
+Start by cloning this repo.
 ```
 $ git clone https://github.com/claws/reverse-geocoder.git
 $ cd reverse-geocoder
@@ -88,7 +86,7 @@ The following steps show how to download the content from
 and then convert it into SQL statements that can later be run to insert the
 contents into the database.
 
-It is important that the name of the generated SQL file is ``100-shapes.sql``
+It is important that the name of the generated SQL file is ``90-shapes.sql``
 to ensure it gets run after the builtin PostGIS initialization script (which
 is ``10_postgis.sh``). This file will be used as a volume mount in the Docker
 compose configuration.
@@ -109,7 +107,7 @@ $ shp2pgsql -G -I TM_WORLD_BORDERS-0.3.shp countries > 90-shapes.sql
 $ cd ..
 ```
 
-The shape file produce columns containing the following structures:
+The shape file produces columns containing the following structures:
 
 | COLUMN    | TYPE             | DESCRIPTION                                             |
 | --------- | ---------------- | ------------------------------------------------------- |
@@ -145,6 +143,8 @@ Once the services start up you should be able to access the SwaggerUI web user
 interface [here](http://localhost:8000/) which should redirect you to the
 [docs](http://localhost:8000/v1/reverse-geocoder/docs) site.
 
+![screenshot](screenshot.png "SwaggerUI")
+
 Click the POST ``/v1/reverse-geocoder/`` row to expose details about the
 endpoint. This endpoint is implemented to accept a payload, rather than URL
 parameters, as it can then rely on the specification and Pydantic to simplify
@@ -174,24 +174,47 @@ The Swagger UI also shows the equivalent curl command to use too.
 
 The Reverse Geocoder Service REST API can be used from curl too.
 
+When the location is within a country bounds then the response payload will
+contain country attributes.
 ```
 $ curl -X POST "http://localhost:8000/v1/reverse-geocoder/" \
-     -H "accept: application/json" \
-     -H "Content-Type: application/json" \
-     -d "{\"location\":{\"longitude\":146.558384,\"latitude\":-42.239392}}"
-{"location":{"latitude":-42.239392,"longitude":146.558384,"altitude":null},"country":{"name":"Australia","iso2":"AU","iso3":"AUS"}}
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d "{\"location\":{\"longitude\":146.558384,\"latitude\":-42.239392}}"
+```
+```json
+{
+  "location":{
+    "latitude":-42.239392,
+    "longitude":146.558384,
+    "altitude":null
+  },
+  "country":{
+    "name":"Australia",
+    "iso2":"AU",
+    "iso3":"AUS"
+  }
+}
 ```
 
-When the user supplied point is not within a county then the response
+When the user supplied point is not within a country then the response
 indicates that no country matched.
 ```
 $ curl -X POST "http://localhost:8000/v1/reverse-geocoder/" \
-     -H "accept: application/json" \
-     -H "Content-Type: application/json" \
-     -d "{\"location\":{\"longitude\":138.119541,\"latitude\":-35.031741}}"
-{"location":{"latitude":-35.031741,"longitude":138.119541,"altitude":null},"country":null}
+  -H "accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d "{\"location\":{\"longitude\":138.119541,\"latitude\":-35.031741}}"
 ```
-
+```json
+{
+  "location":{
+    "latitude":-35.031741,
+    "longitude":138.119541,
+    "altitude":null
+  },
+  "country":null
+}
+```
 
 ## Developer Notes
 
@@ -204,6 +227,7 @@ instructions below show how to do that.
 Create a Python virtual environment.
 
 ```console
+$ cd web-service
 $ python3.8 -m venv venv --prompt fast
 $ source venv/bin/activate
 (fast) $ pip install pip -U
@@ -214,7 +238,6 @@ $ source venv/bin/activate
 Apply code style
 
 ```
-$ cd reverse_geocoder_service
 $ black app
 ```
 
@@ -222,7 +245,6 @@ Run the data server. Use ``--reload`` to enable automatic reloads on code
 changes.
 
 ```console
-(fast) $ cd reverse_geocoder_service
 (fast) $ uvicorn app.main:app --reload --log-level info
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 INFO:     Started reloader process [2617]
